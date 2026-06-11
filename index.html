@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enterprise Knowledge Assistant</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --accent: #3b82f6;
+    --accent2: #60a5fa;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --border: #475569;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo { font-size: 22px; font-weight: 700; color: var(--accent2); }
+  .logo span { color: var(--text2); font-weight: 400; font-size: 14px; margin-left: 6px; }
+
+  .status-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--success); animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  #auth-section { display: flex; align-items: center; gap: 10px; }
+
+  input, select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+  }
+  button:hover { background: var(--accent2); }
+  button:active { transform: scale(0.97); }
+  button.secondary {
+    background: var(--surface2);
+    color: var(--text2);
+  }
+  button.secondary:hover { background: var(--border); color: var(--text); }
+
+  .tag {
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+
+  /* ── Layout ──────────────────────────────── */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ─────────────────────────────── */
+  .sidebar {
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+
+  .sidebar h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text2);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  #sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .source-item {
+    font-size: 12px;
+    color: var(--text2);
+    padding: 6px 10px;
+    background: var(--surface2);
+    border-radius: 6px;
+    word-break: break-all;
+    border-left: 3px solid var(--accent);
+  }
+
+  /* ── Chat Area ────────────────────────────── */
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+
+  /* ── Message Bubbles ─────────────────────── */
+  .message {
+    max-width: 82%;
+    animation: fadeUp .3s ease;
+  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+  .message.user { align-self: flex-end; }
+  .message.assistant { align-self: flex-start; }
+
+  .bubble {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    line-height: 1.65;
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .message.user .bubble {
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 3px;
+  }
+
+  .message.assistant .bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 3px;
+  }
+
+  .message-meta {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .message.user .message-meta { justify-content: flex-end; }
+
+  .confidence-badge {
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .conf-high { background: rgba(34,197,94,.15); color: #22c55e; }
+  .conf-med  { background: rgba(245,158,11,.15); color: #f59e0b; }
+  .conf-low  { background: rgba(239,68,68,.15);  color: #ef4444; }
+
+  /* ── Citations ───────────────────────────── */
+  .citations {
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .citation-item {
+    font-size: 12px;
+    padding: 7px 10px;
+    background: rgba(59,130,246,.08);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    color: var(--text2);
+  }
+
+  .citation-item strong { color: var(--accent2); }
+
+  /* ── Loading ─────────────────────────────── */
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: fit-content;
+  }
+  .typing-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text2);
+    animation: bounce .8s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: .15s; }
+  .typing-dot:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-6px); } }
+
+  /* ── Input Area ──────────────────────────── */
+  .input-area {
+    padding: 16px 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  #query-input {
+    flex: 1;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    font-family: inherit;
+    overflow-y: auto;
+  }
+
+  #send-btn {
+    height: 44px;
+    padding: 0 20px;
+    white-space: nowrap;
+  }
+
+  /* ── Welcome ─────────────────────────────── */
+  .welcome {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text2);
+  }
+  .welcome h2 { color: var(--text); font-size: 20px; margin-bottom: 8px; }
+  .welcome p { font-size: 14px; line-height: 1.6; max-width: 400px; margin: 0 auto; }
+
+  .sample-questions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .sample-q {
+    padding: 8px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+    color: var(--text2);
+  }
+  .sample-q:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  /* ── Scrollbar ───────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <div class="status-dot"></div>
+    <div class="logo">🏢 EnterpriseRAG <span>Multi-Agent Knowledge Assistant</span></div>
+  </div>
+  <div id="auth-section">
+    <input type="text"     id="username" placeholder="Username" value="engineer" style="width:110px">
+    <input type="password" id="password" placeholder="Password" value="eng123"   style="width:100px">
+    <button onclick="login()">Login</button>
+    <span id="user-badge" class="tag" style="display:none"></span>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div>
+      <h3>Indexed Sources</h3>
+      <div id="sources-list">
+        <div style="font-size:12px;color:var(--text2)">Login to view sources</div>
+      </div>
+    </div>
+
+    <div style="margin-top:auto">
+      <h3>Session</h3>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">
+        ID: <span id="session-id-display">—</span>
+      </div>
+      <button class="secondary" onclick="clearSession()" style="width:100%;font-size:12px">
+        🗑 Clear History
+      </button>
+    </div>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-area">
+    <div id="messages">
+      <div class="welcome" id="welcome">
+        <h2>Welcome to EnterpriseRAG</h2>
+        <p>Login and ask questions about your company's documents, policies, SOPs, and internal knowledge base.</p>
+        <div class="sample-questions">
+          <div class="sample-q" onclick="askSample(this)">What is the remote work policy?</div>
+          <div class="sample-q" onclick="askSample(this)">How do I submit an expense report?</div>
+          <div class="sample-q" onclick="askSample(this)">What is the onboarding process?</div>
+          <div class="sample-q" onclick="askSample(this)">Explain our engineering deployment process</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <textarea
+        id="query-input"
+        placeholder="Ask a question about your company knowledge base..."
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button id="send-btn" onclick="sendQuery()">Send ↑</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────
+const API_BASE = 'http://localhost:8000/api';
+let token = null;
+let sessionId = 'sess_' + Math.random().toString(36).slice(2, 10);
+let userId = null;
+
+document.getElementById('session-id-display').textContent = sessionId;
+
+// ── Auth ─────────────────────────────────────
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (!res.ok) throw new Error('Login failed');
+    const data = await res.json();
+
+    token = data.access_token;
+    userId = data.user_id;
+
+    const badge = document.getElementById('user-badge');
+    badge.textContent = `${username} (${data.roles.filter(r => r !== 'all').join(', ') || 'all'})`;
+    badge.style.display = 'inline';
+
+    addSystemMessage(`✅ Logged in as ${username}`);
+    loadSources();
+  } catch (e) {
+    addSystemMessage('❌ Login failed. Check credentials and make sure the API is running.');
+  }
+}
+
+// ── Load Sources ─────────────────────────────
+async function loadSources() {
+  if (!token) return;
+  try {
+    const res = await fetch(`${API_BASE}/sources`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    const list = document.getElementById('sources-list');
+
+    if (data.sources.length === 0) {
+      list.innerHTML = '<div style="font-size:12px;color:var(--text2)">No documents ingested yet</div>';
+    } else {
+      list.innerHTML = data.sources
+        .map(s => `<div class="source-item">📄 ${s}</div>`)
+        .join('');
+    }
+  } catch (e) {
+    console.error('Failed to load sources:', e);
+  }
+}
+
+// ── Send Query ───────────────────────────────
+async function sendQuery() {
+  if (!token) {
+    addSystemMessage('⚠️ Please login first.');
+    return;
+  }
+
+  const input = document.getElementById('query-input');
+  const query = input.value.trim();
+  if (!query) return;
+
+  input.value = '';
+  autoResize(input);
+
+  // Hide welcome
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.style.display = 'none';
+
+  // User message
+  addMessage('user', query);
+
+  // Typing indicator
+  const typingId = addTypingIndicator();
+
+  try {
+    const res = await fetch(`${API_BASE}/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ query, session_id: sessionId, use_history: true }),
+    });
+
+    removeTypingIndicator(typingId);
+
+    if (!res.ok) {
+      const err = await res.json();
+      addMessage('assistant', `❌ Error: ${err.detail || 'Request failed'}`, null, 0);
+      return;
+    }
+
+    const data = await res.json();
+    addMessage('assistant', data.answer, data.citations, data.confidence);
+  } catch (e) {
+    removeTypingIndicator(typingId);
+    addMessage('assistant', `❌ Network error: ${e.message}. Is the API running at ${API_BASE}?`);
+  }
+}
+
+// ── Add Message ──────────────────────────────
+function addMessage(role, text, citations = null, confidence = null) {
+  const container = document.getElementById('messages');
+
+  const msg = document.createElement('div');
+  msg.className = `message ${role}`;
+
+  let html = `<div class="bubble">${escapeHtml(text)}</div>`;
+
+  // Meta row (for assistant)
+  if (role === 'assistant') {
+    let metaHtml = '';
+    if (confidence !== null) {
+      const cls = confidence > 0.7 ? 'conf-high' : confidence > 0.4 ? 'conf-med' : 'conf-low';
+      const pct = Math.round(confidence * 100);
+      metaHtml += `<span class="confidence-badge ${cls}">Confidence: ${pct}%</span>`;
+    }
+    if (metaHtml) {
+      html += `<div class="message-meta">${metaHtml}</div>`;
+    }
+  }
+
+  // Citations
+  if (citations && citations.length > 0) {
+    const citHtml = citations.map(c => `
+      <div class="citation-item">
+        <strong>${escapeHtml(c.citation_str)}</strong>
+        ${c.snippet ? `<br><span>${escapeHtml(c.snippet)}</span>` : ''}
+      </div>
+    `).join('');
+    html += `<div class="citations"><div style="font-size:11px;color:var(--text2);font-weight:600;margin-bottom:4px">📚 SOURCES</div>${citHtml}</div>`;
+  }
+
+  msg.innerHTML = html;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addSystemMessage(text) {
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.style.cssText = 'text-align:center;font-size:12px;color:var(--text2);padding:4px 0';
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+let typingCounter = 0;
+function addTypingIndicator() {
+  const id = `typing-${++typingCounter}`;
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.id = id;
+  div.className = 'message assistant';
+  div.innerHTML = `
+    <div class="typing-indicator">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeTypingIndicator(id) {
+  document.getElementById(id)?.remove();
+}
+
+// ── Utilities ─────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendQuery();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function askSample(el) {
+  document.getElementById('query-input').value = el.textContent;
+  sendQuery();
+}
+
+async function clearSession() {
+  if (!token) return;
+  try {
+    await fetch(`${API_BASE}/session/${sessionId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    document.getElementById('messages').innerHTML = '';
+    addSystemMessage('🗑 Session cleared');
+  } catch (e) {
+    addSystemMessage('Failed to clear session');
+  }
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
